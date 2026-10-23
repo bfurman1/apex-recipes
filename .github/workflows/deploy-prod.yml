@@ -43,6 +43,7 @@ jobs:
                   sf --version
                   printf '%s\n' "$SFDX_AUTH_URL" > auth.txt
                   sf org login sfdx-url --sfdx-url-file auth.txt --alias prod --set-default
+                  sf org display --target-org prod
 
             # Pull request: check-only deployment, nothing is committed to the org
             - name: 'Validate deployment (PR)'
@@ -61,6 +62,7 @@ jobs:
                   sf project deploy start \
                       --source-dir force-app \
                       --target-org prod \
+                      --ignore-conflicts \
                       --test-level RunLocalTests \
                       --wait 60
 
