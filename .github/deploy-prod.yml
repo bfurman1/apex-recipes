@@ -1,0 +1,71 @@
+# Save as .github/workflows/deploy-prod.yml in your fork.
+# PRs into main  -> validate only (check-only deploy + run local tests, nothing saved)
+# Push to main   -> real deploy to the production org
+name: Deploy to Production
+
+on:
+    workflow_dispatch:
+    pull_request:
+        branches:
+            - main
+        paths:
+            - 'force-app/**'
+    push:
+        branches:
+            - main
+        paths:
+            - 'force-app/**'
+
+# Never run two deployments to the same org at the same time
+concurrency:
+    group: prod-deploy
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            # Get the code that triggered this run
+            - name: 'Checkout source code'
+              uses: actions/checkout@v7.0.0
+
+            # Node version pinned in package.json ("volta" section)
+            - name: 'Install Volta'
+              uses: volta-cli/action@v5.0.0
+
+            - name: 'Install Salesforce CLI'
+              run: |
+                  npm install @salesforce/cli --location=global
+                  sf --version
+
+            # Auth URL (refresh token) stored as a secret. See guide appendix for the JWT upgrade.
+            - name: 'Authenticate to production org'
+              env:
+                  SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+              run: |
+                  printf '%s\n' "$SFDX_AUTH_URL" > auth.txt
+                  sf org login sfdx-url --sfdx-url-file auth.txt --alias prod --set-default
+
+            # Pull request: check-only deployment, nothing is committed to the org
+            - name: 'Validate deployment (PR)'
+              if: github.event_name == 'pull_request'
+              run: |
+                  sf project deploy validate \
+                      --source-dir force-app \
+                      --target-org prod \
+                      --test-level RunLocalTests \
+                      --wait 60
+
+            # Merge to main (or manual run): real deployment
+            - name: 'Deploy to production'
+              if: github.event_name != 'pull_request'
+              run: |
+                  sf project deploy start \
+                      --source-dir force-app \
+                      --target-org prod \
+                      --test-level RunLocalTests \
+                      --wait 60
+
+            - name: 'Remove auth file'
+              if: always()
+              run: rm -f auth.txt
