@@ -29,20 +29,18 @@ jobs:
             - name: 'Checkout source code'
               uses: actions/checkout@v7.0.0
 
-            # Node version pinned in package.json ("volta" section)
-            - name: 'Install Volta'
-              uses: volta-cli/action@v5.0.0
-
+            # ubuntu-latest ships with Node; the CLI's bin folder is added to PATH for later steps
             - name: 'Install Salesforce CLI'
               run: |
-                  npm install @salesforce/cli --location=global
-                  sf --version
+                  npm install @salesforce/cli --global
+                  echo "$(npm prefix --global)/bin" >> "$GITHUB_PATH"
 
             # Auth URL (refresh token) stored as a secret. See guide appendix for the JWT upgrade.
             - name: 'Authenticate to production org'
               env:
                   SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
               run: |
+                  sf --version
                   printf '%s\n' "$SFDX_AUTH_URL" > auth.txt
                   sf org login sfdx-url --sfdx-url-file auth.txt --alias prod --set-default
 
