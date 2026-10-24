@@ -6,6 +6,9 @@
       "package": "ApexRecipes",
       "versionName": "Winter 27 release",
       "versionNumber": "68.0.0.NEXT"
+    }, 
+     {
+      "path": "my-recipes"
     }
   ],
   "namespace": "",
